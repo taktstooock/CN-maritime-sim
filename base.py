@@ -2,6 +2,8 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 
+DISCOUNT_RATE = 0.05  # 割引率
+
 class Agent:
     def __init__(self, i):
         self.n_green = random.randint(0, 5)  # green船の数
@@ -24,22 +26,34 @@ class Agent:
         n_green_old = self.n_green
         n_oil_old = self.n_oil
 
-        # Rule 3: 燃料価格に基づくエコ戦略
-        if env.p_green <= 80 and env.p_oil >= 40:
-            self.n_green += random.randint(1, 10)
-            self.n_oil = max(0, self.n_oil - random.randint(1, 5))
+        past_years = random.randint(1, 5)
+        future_years = random.randint(1, 5)
+        max_benefit = 0
+        best_diff_oil = 0
+        best_diff_green = 0
 
-        if env.p_green <= 80 and env.p_oil < 40:
-            self.n_green += random.randint(1, 10)
-            self.n_oil += random.randint(1, 10)
+        test_case = 25
+        for diff_oil in range(-test_case,test_case+1):
+            for diff_green in range(-test_case,test_case+1):
+                n_oil = max(0, self.n_oil + diff_oil)
+                n_green = max(0, self.n_green + diff_green)
+                predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years)
+                predict_penalties, predict_rebates = self.predict_feebate_future(env, predict_n_oils, predict_n_greens, n_oil, n_green, future_years)
 
-        if env.p_green > 80 and env.p_oil < 40:
-            self.n_green = max(0, self.n_green - random.randint(1, 5))
-            self.n_oil += random.randint(1, 10)
-
-        if env.p_green > 80 and env.p_oil >= 40:
-            self.n_green = max(0, self.n_green - random.randint(1, 5))
-            self.n_oil = max(0, self.n_oil - random.randint(1, 5))
+                predict_costs = 0
+                predict_sales = 0
+                predict_benefits = 0
+                for i in range(future_years):
+                    predict_costs = (n_oil + diff_oil*i) * (1/20*env.pv_oil + env.p_oil) + (n_green + diff_green*i) * (1/20*env.pv_green + env.p_green)
+                    predict_sales = (n_oil + diff_oil*i + n_green + diff_green*i) * env.fare
+                    predict_benefits += (predict_sales - predict_costs - predict_penalties[i] + predict_rebates[i]) * (1 - DISCOUNT_RATE) ** (i + 1)
+                if predict_benefits > max_benefit:
+                    max_benefit = predict_benefits
+                    best_diff_oil = diff_oil
+                    best_diff_green = diff_green
+        
+        self.n_green += best_diff_green
+        self.n_oil += best_diff_oil
 
         self.n_oil = max(0, self.n_oil)
         self.n_green = max(0, self.n_green)
@@ -56,7 +70,6 @@ class Agent:
             if agent.ind == self.ind:
               continue
 
-            #totl_hist = （あるエージェントが直近1,3,5年で買った船の数の合計）
             if len(agent.history_green) == 0:
                 new_buy_oil = random.randint(0, 5)
                 new_buy_green = random.randint(0, 5)
@@ -74,7 +87,7 @@ class Agent:
         #整数化
         return env.total_n_oil + int(predict_sum_n_oil), env.total_n_green + int(predict_sum_n_green)
     
-    def predict_n_feature(self, env, agents, past_years, feature_years):
+    def predict_n_future(self, env, agents, past_years, feature_years):
         """
         過去past_years年間の特徴量を用いて、未来feature_years年後の船の数を予測する
         """
@@ -106,7 +119,6 @@ class Agent:
             
             predict_sum_n_oils += new_buy_oils
             predict_sum_n_greens += new_buy_greens
-        
         return env.total_n_oil + predict_sum_n_oils, env.total_n_green + predict_sum_n_greens
 
     def predict_feebate(self, env, n_oil, n_green, self_n_oil, self_n_green, feebate_rate=None):
@@ -122,14 +134,14 @@ class Agent:
         penalties = np.zeros(future_years)
         rebates = np.zeros(future_years)
         for i in range(future_years):
-            penalty, rebate = self.predict_feebate(env, n_oils[i], n_greens[i], self_n_oil, self_n_green)
+            penalty, rebate = self.predict_feebate(env, n_oils[i], n_greens[i], self_n_oil, self_n_green, env.feebate_rate * (1 - env.feebate_change_rate) ** (i + 1))
             penalties[i] = penalty
             rebates[i] = rebate
         return penalties, rebates
 
 
 class Env:
-    def __init__(self, agents, initial_p_green, initial_p_oil, initial_pv_green, initial_pv_oil, initial_fare, initial_feebate_rate, fee_change_rate=0.1):
+    def __init__(self, agents, initial_p_green, initial_p_oil, initial_pv_green, initial_pv_oil, initial_fare, initial_feebate_rate, feebate_change_rate):
         self.agents = agents
         self.p_green = initial_p_green
         self.p_oil = initial_p_oil
@@ -141,7 +153,7 @@ class Env:
         self.total_n = self.total_n_green + self.total_n_oil
         self.demand = self.fare * self.total_n
         self.feebate_rate = initial_feebate_rate
-        self.feebate_change_rate = fee_change_rate
+        self.feebate_change_rate = feebate_change_rate
         self.update()
 
     def cal_total_n_oil(self):
@@ -151,11 +163,14 @@ class Env:
         return sum(agent.n_green for agent in self.agents)
 
     def market(self):
-        self.p_green = self.p_green * (1 + random.uniform(-0.10, 0))
         random_walker = random.uniform(-0.10, 0.10)
         self.p_oil = self.p_oil * (1 + random_walker)
         self.pv_oil = 70 * (1 + random_walker)
-        self.pv_green = max(min(130,100*102.5*4/(self.total_n_green+1)),50) # 102.5*4 = totl_nの初期値期待値
+
+        self.p_green = self.p_green * (1 + random.uniform(-0.10, 0))
+
+        random_walker = random.uniform(-0.05, 0.05)
+        self.pv_green = max(min(130 ,130*102.5*4/(self.total_n_green+1)),50) *(1+random_walker) # 102.5*4 = totl_nの初期値期待値
 
     def feebate(self):
         feebate_rate = self.feebate_rate
@@ -163,7 +178,7 @@ class Env:
         sum_n_oil = self.cal_total_n_oil()
         sum_n_green = self.cal_total_n_green()
         
-        penalty_rate = (self.p_green - self.p_oil * feebate_rate) * sum_n_green / sum_n_oil
+        penalty_rate = (self.p_green - self.p_oil * feebate_rate) * sum_n_green / sum_n_oil if sum_n_oil != 0 else 0
         rebate_rate = self.p_green - self.p_oil * feebate_rate
 
         if penalty_rate < 0 or rebate_rate < 0:
@@ -203,14 +218,13 @@ class Simulation:
         self.initial_feebate_rate = 1  # フィーベイト率
 
         self.FEEBATE_CHANGE_RATE = 0.1  # フィーベイト率の変化率
-        self.DISCOUNT_RATE = 0  # 割引率
 
         # N人のエージェントを作成
         self.agents = [Agent(i) for i in range(self.N)]
 
         # 環境の作成
         self.env = Env(self.agents, self.initial_p_green, self.initial_p_oil, self.initial_pv_green,
-                       self.initial_pv_oil, self.initial_fare, self.initial_feebate_rate)
+                       self.initial_pv_oil, self.initial_fare, self.initial_feebate_rate, self.FEEBATE_CHANGE_RATE)
 
         # 結果を保存するリスト
         self.years = []
@@ -348,9 +362,20 @@ class Simulation:
         # 結果の表示
         print("Final Total Green Ships:", self.env.total_n_green)
         print("Final Total Oil Ships:", self.env.total_n_oil)
-
+    
+    def validate(self):
+        """
+        シミュレーションの結果を検証する
+        1. 2050年までにoil船の数が0になること
+        2. 2050年までにoil線の数が初期値の7割以下になること
+        """
+        index_2050 = self.years.index(2050)
+        total_n_oil_2050 = self.total_n_oil_history[index_2050]
+        print("2050年までにoil船の数が0になること:", total_n_oil_2050 == 0)
+        print("2050年までにoil線の数が初期値の7割以下になること:", total_n_oil_2050 < 0.7 * self.initial_pv_oil)
 
 if __name__ == '__main__':
     sim = Simulation(Agent, Env)
     sim.run()
     sim.plot()
+    sim.validate()
