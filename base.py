@@ -23,7 +23,7 @@ class Agent:
         avg_oil = sum(agent.n_oil for agent in other_agents) / len(other_agents)
         n_green_old = self.n_green
         n_oil_old = self.n_oil
-        
+
         # Rule 3: 燃料価格に基づくエコ戦略
         if env.p_green <= 80 and env.p_oil >= 40:
             self.n_green += random.randint(1, 10)
@@ -151,10 +151,11 @@ class Env:
         return sum(agent.n_green for agent in self.agents)
 
     def market(self):
-        self.p_green = self.p_green * (1 + random.uniform(-0.05, 0))
-        self.p_oil = self.p_oil * (1 + random.uniform(0, 0.05))
-        self.pv_oil = self.p_oil * 10
-        self.pv_green = self.p_green * 8
+        self.p_green = self.p_green * (1 + random.uniform(-0.10, 0))
+        random_walker = random.uniform(-0.10, 0.10)
+        self.p_oil = self.p_oil * (1 + random_walker)
+        self.pv_oil = 70 * (1 + random_walker)
+        self.pv_green = max(min(130,100*102.5*4/(self.total_n_green+1)),50) # 102.5*4 = totl_nの初期値期待値
 
     def feebate(self):
         feebate_rate = self.feebate_rate
@@ -194,11 +195,11 @@ class Simulation:
         # 初期値
         random.seed(100)
         self.time = 50  # シミュレーション期間
-        self.initial_p_green = 100  # 最初のgreen燃料価格
-        self.initial_p_oil = 20  # 最初のoil燃料価格
-        self.initial_pv_green = 300  # 最初のgreen船の価格
-        self.initial_pv_oil = 200  # 最初のoil船の価格
-        self.initial_fare = 100  # 最初の運賃
+        self.initial_p_green = 83.55  # 最初のgreen燃料価格
+        self.initial_p_oil = 13.64  # 最初のoil燃料価格
+        self.initial_pv_green = 180  # 最初のgreen船の価格
+        self.initial_pv_oil = 70  # 最初のoil船の価格
+        self.initial_fare = 144.8  # 最初の運賃
         self.initial_feebate_rate = 1  # フィーベイト率
 
         self.FEEBATE_CHANGE_RATE = 0.1  # フィーベイト率の変化率
@@ -330,8 +331,8 @@ class Simulation:
 
         # 6. 通常と特殊の平均船数の比較
         plt.subplot(3, 2, 6)
-        plt.plot(self.years, self.agent_avg_oil, label='Average Oil Ships (Normal)')
-        plt.plot(self.years, self.agent_avg_green, label='Average Green Ships (Normal)')
+        plt.plot(self.years, self.agent_avg_oil, label='Average Oil Ships')
+        plt.plot(self.years, self.agent_avg_green, label='Average Green Ships')
         plt.xlabel('Year')
         plt.ylabel('Average Number of Ships')
         plt.title('Average Number of Ships Over Time')
