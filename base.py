@@ -26,9 +26,9 @@ class Agent:
         n_green_old = self.n_green
         n_oil_old = self.n_oil
 
-        past_years = random.randint(1, 5)
+        past_years = random.randint(1, 3)
         future_years = random.randint(1, 5)
-        max_benefit = 0
+        max_benefit = -1e9
         best_diff_oil = 0
         best_diff_green = 0
 
@@ -45,7 +45,8 @@ class Agent:
                 predict_benefits = 0
                 for i in range(future_years):
                     predict_costs = (n_oil + diff_oil*i) * (1/20*env.pv_oil + env.p_oil) + (n_green + diff_green*i) * (1/20*env.pv_green + env.p_green)
-                    predict_sales = (n_oil + diff_oil*i + n_green + diff_green*i) * env.fare
+                    predict_fare = env.fare * 1.025 ** (i + 1) * env.total_n / (predict_n_oils[i] + predict_n_greens[i])
+                    predict_sales = (n_oil + diff_oil*i + n_green + diff_green*i) * predict_fare
                     predict_benefits += (predict_sales - predict_costs - predict_penalties[i] + predict_rebates[i]) * (1 - DISCOUNT_RATE) ** (i + 1)
                 if predict_benefits > max_benefit:
                     max_benefit = predict_benefits
@@ -163,14 +164,12 @@ class Env:
         return sum(agent.n_green for agent in self.agents)
 
     def market(self):
-        random_walker = random.uniform(-0.10, 0.10)
-        self.p_oil = self.p_oil * (1 + random_walker)
-        self.pv_oil = 70 * (1 + random_walker)
+        self.p_oil *= 1 + random.uniform(-0.10, 0.10)
+        self.pv_oil *= 1 + random.uniform(-0.10, 0.10)
 
         self.p_green = self.p_green * (1 + random.uniform(-0.10, 0))
 
-        random_walker = random.uniform(-0.05, 0.05)
-        self.pv_green = max(min(130 ,130*102.5*4/(self.total_n_green+1)),50) *(1+random_walker) # 102.5*4 = totl_nの初期値期待値
+        self.pv_green = max(min(130 ,130*102.5*4/(self.total_n_green+1)),50) *(1+random.uniform(-0.05, 0.05)) # 102.5*4 = totl_nの初期値期待値
 
     def feebate(self):
         feebate_rate = self.feebate_rate
@@ -215,9 +214,9 @@ class Simulation:
         self.initial_pv_green = 180  # 最初のgreen船の価格
         self.initial_pv_oil = 70  # 最初のoil船の価格
         self.initial_fare = 144.8  # 最初の運賃
-        self.initial_feebate_rate = 1  # フィーベイト率
+        self.initial_feebate_rate = 0.5  # フィーベイト率
 
-        self.FEEBATE_CHANGE_RATE = 0.1  # フィーベイト率の変化率
+        self.FEEBATE_CHANGE_RATE = 0  # フィーベイト率の変化率
 
         # N人のエージェントを作成
         self.agents = [Agent(i) for i in range(self.N)]
