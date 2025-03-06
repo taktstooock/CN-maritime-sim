@@ -1,3 +1,6 @@
+import base
+from base import Agent, Env, Simulation
+
 class CustomAgent(Agent):
     def __init__(self, i):
         super().__init__(i)
