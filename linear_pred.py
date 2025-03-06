@@ -41,20 +41,18 @@ class CustomAgent(base.Agent):
         for j in range(future_years):
             if lack_of_history:
                 if j == 0:
-                    pred_n_oil[j] = random.randint(0,5)*len(agents)+env.total_n_oil*3/4
-                    pred_n_green[j] = random.randint(0,5)*len(agents)+env.total_n_green*3/4
+                    pred_n_oil[j] = random.randint(-5,5)*len(agents)+env.total_n_oil*3/4
+                    pred_n_green[j] = random.randint(-5,5)*len(agents)+env.total_n_green*3/4
                 else:
                     pred_n_oil[j] = pred_n_oil[0]
                     pred_n_green[j] = pred_n_green[0]
             else:
                 pred_n_oil[j] = pred_n_oil[j-1] + a_oil*(j+past_years) + b_oil
                 pred_n_green[j] = pred_n_green[j-1] + a_green*(j+past_years) + b_green
-                if pred_n_oil[j] < 0:
-                    pred_n_oil[j] = 0
-                if pred_n_green[j] < 0:
-                    pred_n_green[j] = 0
         pred_n_oil += env.total_n_oil*3/4
         pred_n_green += env.total_n_green*3/4
+        pred_n_oil = np.maximum(pred_n_oil,0)
+        pred_n_green = np.maximum(pred_n_green,0)
 
         return pred_n_oil, pred_n_green
 

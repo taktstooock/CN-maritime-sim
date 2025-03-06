@@ -28,8 +28,8 @@ class Agent:
         n_green_old = self.n_green
         n_oil_old = self.n_oil
 
-        past_years = random.randint(2, 3)
-        future_years = random.randint(1, 5)
+        past_years = random.randint(3, 7)
+        future_years = random.randint(1, 3)
 
         predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years) # 未来の船の数を予測(他のエージェントの合計)
         # print(f"Agent {self.ind}: Predicted {predict_n_oils} oil ships and {predict_n_greens} green ships in {future_years} years.")
@@ -38,9 +38,9 @@ class Agent:
         best_diff_oil = 0
         best_diff_green = 0
 
-        test_case = 100 # 重油船、グリーン船の購入数の変動の幅
-        for diff_oil in range(-test_case,test_case+1, 2):
-            for diff_green in range(-test_case,test_case+1, 2):
+        test_case = 500 # 重油船、グリーン船の購入数の変動の幅
+        for diff_oil in range(-test_case,test_case+1, 10):
+            for diff_green in range(-test_case,test_case+1, 10):
                 n_oil = max(0, self.n_oil + diff_oil)
                 n_green = max(0, self.n_green + diff_green)
                 predict_total_n_oils = predict_n_oils + n_oil # 自分の重油船の数を加える
@@ -173,6 +173,9 @@ class Agent:
         if n_oil != 0:
                penalty = self_n_oil * (env.p_green - env.p_oil * feebate_rate) * n_green / n_oil
                rebate = self_n_green * (env.p_green - env.p_oil * feebate_rate)
+
+               penalty = max(0, penalty)
+               rebate = max(0, rebate)
                return penalty ,rebate
     
     def predict_feebate_future(self, env, n_oils :np.ndarray, n_greens :np.ndarray, self_n_oil, self_n_green, future_years):
@@ -257,7 +260,7 @@ class Simulation:
         self.initial_pv_green = 180  # 最初のgreen船の価格
         self.initial_pv_oil = 70  # 最初のoil船の価格
         self.initial_fare = 144.8  # 最初の運賃
-        self.initial_feebate_rate = 0.1  # フィーベイト率
+        self.initial_feebate_rate = 0.5  # フィーベイト率
 
         self.FEEBATE_CHANGE_RATE = 0  # フィーベイト率の変化率
 
