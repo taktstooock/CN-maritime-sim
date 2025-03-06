@@ -13,8 +13,10 @@ class Agent:
         self.last_benefit = 0  # 前年の利益
         self.history_oil = [] #重油のログ
         self.history_green = [] #グリーンのログ
+        self.history_predict_n_oil = [] #重油船の総数の予測ログ
+        self.history_predict_n_green = [] #グリーン船の総数の予測ログ
 
-    def renew(self, env):  # 決算
+    def renew(self, env, year):  # 決算
         self.cost = self.n_green * (1/20*env.pv_green + env.p_green) + self.n_oil * (1/20*env.pv_oil + env.p_oil)  # 輸送コスト
         self.sales = (self.n_green + self.n_oil) * env.fare  # 売上
         self.last_benefit = self.benefit  # 前年の利益を更新
@@ -28,16 +30,20 @@ class Agent:
 
         past_years = random.randint(1, 3)
         future_years = random.randint(1, 5)
-        max_benefit = -1e9
+
+        predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years) # 未来の船の数を予測
+        self.history_predict_n_oil.append(predict_n_oils)
+        self.history_predict_n_green.append(predict_n_greens)
+
+        max_benefit = -1e9 # 負の無限大（最大値を求めるため）
         best_diff_oil = 0
         best_diff_green = 0
 
-        test_case = 25
+        test_case = 50 # 重油船、グリーン船の購入数の変動の幅
         for diff_oil in range(-test_case,test_case+1):
             for diff_green in range(-test_case,test_case+1):
                 n_oil = max(0, self.n_oil + diff_oil)
                 n_green = max(0, self.n_green + diff_green)
-                predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years)
                 predict_penalties, predict_rebates = self.predict_feebate_future(env, predict_n_oils, predict_n_greens, n_oil, n_green, future_years)
 
                 predict_costs = 0
@@ -45,9 +51,9 @@ class Agent:
                 predict_benefits = 0
                 for i in range(future_years):
                     predict_costs = (n_oil + diff_oil*i) * (1/20*env.pv_oil + env.p_oil) + (n_green + diff_green*i) * (1/20*env.pv_green + env.p_green)
-                    predict_fare = env.fare * 1.025 ** (i + 1) * env.total_n / (predict_n_oils[i] + predict_n_greens[i])
+                    predict_fare = env.fare * 1.025 ** (i + 1) * env.total_n / (predict_n_oils[i] + predict_n_greens[i]) # 運賃の予測（需要が年率2.5%増加）
                     predict_sales = (n_oil + diff_oil*i + n_green + diff_green*i) * predict_fare
-                    predict_benefits += (predict_sales - predict_costs - predict_penalties[i] + predict_rebates[i]) * (1 - DISCOUNT_RATE) ** (i + 1)
+                    predict_benefits += (predict_sales - predict_costs - predict_penalties[i] + predict_rebates[i]) * (1 - DISCOUNT_RATE) ** (i + 1) # 割引現在価値
                 if predict_benefits > max_benefit:
                     max_benefit = predict_benefits
                     best_diff_oil = diff_oil
@@ -55,6 +61,11 @@ class Agent:
         
         self.n_green += best_diff_green
         self.n_oil += best_diff_oil
+
+        if best_diff_oil == test_case or best_diff_oil == -test_case or best_diff_green == test_case or best_diff_green == -test_case:
+            # 購入数が最大値または最小値に達した場合、警告を表示
+            # print(f"Agent {self.ind}: The number of ships has reached the maximum or minimum value. Bought {best_diff_oil} oil ships and {best_diff_green} green ships.")
+            pass
 
         self.n_oil = max(0, self.n_oil)
         self.n_green = max(0, self.n_green)
@@ -88,12 +99,12 @@ class Agent:
         #整数化
         return env.total_n_oil + int(predict_sum_n_oil), env.total_n_green + int(predict_sum_n_green)
     
-    def predict_n_future(self, env, agents, past_years, feature_years):
+    def predict_n_future(self, env, agents, past_years, future_years):
         """
         過去past_years年間の特徴量を用いて、未来feature_years年後の船の数を予測する
         """
-        predict_sum_n_oils = np.zeros(feature_years)
-        predict_sum_n_greens = np.zeros(feature_years)
+        predict_sum_n_oils = np.zeros(future_years)
+        predict_sum_n_greens = np.zeros(future_years)
 
         # 自分以外のAgentが買う重油船の数を予測
         for agent in agents:
@@ -101,9 +112,9 @@ class Agent:
             if agent.ind == self.ind:
                 continue
             
-            new_buy_oils = np.zeros(feature_years)
-            new_buy_greens = np.zeros(feature_years)
-            for i in range(feature_years):
+            new_buy_oils = np.zeros(future_years)
+            new_buy_greens = np.zeros(future_years)
+            for i in range(future_years):
                 # 過去past_years年間の特徴量を取得
                 year = len(agent.history_green) + i
                 if len(agent.history_green) == 0:
@@ -252,7 +263,7 @@ class Simulation:
             self.env.update()
 
             for agent in self.agents:
-                agent.renew(self.env)
+                agent.renew(self.env, year)
 
             self.total_n_green_history.append(self.env.total_n_green)
             self.total_n_oil_history.append(self.env.total_n_oil)
@@ -281,15 +292,42 @@ class Simulation:
 
         # グラフのプロット
         plt.figure(figsize=(20, 15))
+        agent_colors = ['red', 'blue', 'green', 'orange']  # エージェントごとの色
 
-        # 1. 総green船とoil船の数の変化
+        # 1. 総green船とoil船の数の変化と各エージェントの予測
         plt.subplot(3, 2, 1)
-        plt.plot(self.years, self.total_n_green_history, label='Total Green Ships', color='green')
-        plt.plot(self.years, self.total_n_oil_history, label='Total Oil Ships', color='blue')
-        plt.title('Total Ships Over Time')
+        # 実際の推移をプロット
+        plt.plot(self.years, self.total_n_green_history, label='Actual Green Ships', color='green', linewidth=2)
+        plt.plot(self.years, self.total_n_oil_history, label='Actual Oil Ships', color='blue', linewidth=2)
+        
+        # 各エージェントの予測をプロット
+        
+        for i, agent in enumerate(self.agents):
+            color_green = agent_colors[i % len(agent_colors)]
+            color_oil = agent_colors[i % len(agent_colors)]
+            
+            # 各時点での予測をプロット
+            for t, year in enumerate(self.years):
+                if t < len(agent.history_predict_n_oil) and t < len(agent.history_predict_n_green):
+                    # 予測の長さ（future_years）を取得
+                    future_years = len(agent.history_predict_n_oil[t])
+                    if future_years > 0:
+                        # 予測データの時間軸を作成
+                        future_x = [year + j for j in range(1, future_years + 1)]
+                        
+                        # 油船の予測をプロット
+                        plt.plot(future_x, agent.history_predict_n_oil[t],
+                            color=color_oil, linestyle='--', alpha=0.3, linewidth=1)
+                        
+                        # グリーン船の予測をプロット
+                        plt.plot(future_x, agent.history_predict_n_green[t],
+                            color=color_green, linestyle=':', alpha=0.3, linewidth=1)
+        
+        plt.title('Total Ships Over Time with Agent Predictions')
         plt.xlabel('Year')
         plt.ylabel('Number of Ships')
-        plt.legend()
+        plt.legend(['Actual Green Ships', 'Actual Oil Ships'])
+        plt.ylim(0, 7000)
 
         # 2. greenとoil燃料の価格の変化
         plt.subplot(3, 2, 2)
@@ -299,6 +337,7 @@ class Simulation:
         plt.xlabel('Year')
         plt.ylabel('Price')
         plt.legend()
+        plt.ylim(0, 100)
 
         # 3. greenとoil船の価格の変化
         plt.subplot(3, 2, 3)
@@ -308,6 +347,7 @@ class Simulation:
         plt.xlabel('Year')
         plt.ylabel('Price')
         plt.legend()
+        plt.ylim(0, 160)
 
         # 4. 運賃と需要の変化 - 左右の軸を使用
         ax1 = plt.subplot(3, 2, 4)
@@ -316,12 +356,14 @@ class Simulation:
         ax1.set_ylabel('Fare', color=color)
         ax1.plot(self.years, self.fare_history, color=color, label='Fare')
         ax1.tick_params(axis='y', labelcolor=color)
+        ax1.set_ylim(0, 120)
 
         ax2 = ax1.twinx()  # 右側のy軸を作成
         color = 'red'
         ax2.set_ylabel('Demand', color=color)
         ax2.plot(self.years, self.demand_history, color=color, label='Demand')
         ax2.tick_params(axis='y', labelcolor=color)
+        ax2.set_ylim(0, 220000)
 
         # 凡例の作成
         lines1, labels1 = ax1.get_legend_handles_labels()
@@ -332,15 +374,15 @@ class Simulation:
 
         # 5. 利益をエージェントごとに色分けして描画
         plt.subplot(3, 2, 5)
-        rule_colors = ['red', 'blue', 'green', 'orange']
 
         for i, agent in enumerate(self.agents):
             plt.plot(self.years, self.agent_benefit_history[agent.ind], label=f'Agent {agent.ind}',
-                    color=rule_colors[i], alpha=0.5)
+                    color=agent_colors[i], alpha=0.5)
         plt.title('Agent Benefits Over Time')
         plt.xlabel('Year')
         plt.ylabel('Benefit')
         plt.legend()
+        plt.ylim(0, 45000)
 
         # 6. 通常と特殊の平均船数の比較
         plt.subplot(3, 2, 6)
@@ -350,6 +392,7 @@ class Simulation:
         plt.ylabel('Average Number of Ships')
         plt.title('Average Number of Ships Over Time')
         plt.legend()
+        plt.ylim(0, 1200)
 
         # レイアウトの調整
         plt.tight_layout()
@@ -366,12 +409,16 @@ class Simulation:
         """
         シミュレーションの結果を検証する
         1. 2050年までにoil船の数が0になること
-        2. 2050年までにoil線の数が初期値の7割以下になること
+        2. 2050年までにoil船の数が初期値の7割以下になること
         """
         index_2050 = self.years.index(2050)
-        total_n_oil_2050 = self.total_n_oil_history[index_2050]
-        print("2050年までにoil船の数が0になること:", total_n_oil_2050 == 0)
-        print("2050年までにoil線の数が初期値の7割以下になること:", total_n_oil_2050 < 0.7 * self.initial_pv_oil)
+        total_n_oil_to_2050 = self.total_n_oil_history[:index_2050]
+        print("2050年までのどこかのタイミングでoil船の数が0になること:")
+        if 0 in total_n_oil_to_2050:
+            print(f'True ({total_n_oil_to_2050.index(0)}年後)')
+        print("2050年までのどこかのタイミングでoil船の数が初期値の7割以下になること:")
+        if any(n_oil < 0.7 * total_n_oil_to_2050[0] for n_oil in total_n_oil_to_2050):
+            print(f'True ({total_n_oil_to_2050.index(min(total_n_oil_to_2050))}年後に最小値{min(total_n_oil_to_2050)}を記録)')
 
 if __name__ == '__main__':
     sim = Simulation(Agent, Env)
