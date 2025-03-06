@@ -28,8 +28,8 @@ class Agent:
         n_green_old = self.n_green
         n_oil_old = self.n_oil
 
-        past_years = random.randint(1, 3)
-        future_years = random.randint(1, 5)
+        past_years = random.randint(2, 3)
+        future_years = random.randint(1, 4)
 
         predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years) # 未来の船の数を予測(他のエージェントの合計)
         self.history_predict_n_oil.append(predict_n_oils)
@@ -45,16 +45,16 @@ class Agent:
             for diff_green in range(-test_case,test_case+1, 2):
                 n_oil = max(0, self.n_oil + diff_oil)
                 n_green = max(0, self.n_green + diff_green)
-                # predict_n_oils += n_oil
-                # predict_n_greens += n_green
-                predict_penalties, predict_rebates = self.predict_feebate_future(env, predict_n_oils, predict_n_greens, n_oil, n_green, future_years)
+                predict_total_n_oils = predict_n_oils + n_oil # 自分の重油船の数を加える
+                predict_total_n_greens = predict_n_greens + n_green # 自分のグリーン船の数を加える
+                predict_penalties, predict_rebates = self.predict_feebate_future(env, predict_total_n_oils, predict_total_n_greens, n_oil, n_green, future_years)
 
                 predict_costs = 0
                 predict_sales = 0
                 predict_benefits = 0
                 for i in range(future_years):
                     predict_costs = (n_oil + diff_oil*i) * (1/20*env.pv_oil + env.p_oil) + (n_green + diff_green*i) * (1/20*env.pv_green + env.p_green)
-                    predict_fare = env.fare * 1.025 ** (i + 1) * env.total_n / (predict_n_oils[i] + predict_n_greens[i]) # 運賃の予測（需要が年率2.5%増加）
+                    predict_fare = env.fare * 1.025 ** (i + 1) * env.total_n / (predict_total_n_oils[i] + predict_total_n_greens[i]) # 運賃の予測（需要が年率2.5%増加）
                     predict_sales = (n_oil + diff_oil*i + n_green + diff_green*i) * predict_fare
                     predict_benefits += (predict_sales - predict_costs - predict_penalties[i] + predict_rebates[i]) * (1 - DISCOUNT_RATE) ** (i + 1) # 割引現在価値
                 if predict_benefits > max_benefit:
@@ -125,10 +125,37 @@ class Agent:
                         new_buy_oil = random.randint(0, 5)
                         new_buy_green = random.randint(0, 5)
                     else:
-                        pass
+                        # 履歴がなく将来予測の場合、前の予測を使用
+                        new_buy_oil = new_buy_oils[i-1]
+                        new_buy_green = new_buy_greens[i-1]
+                elif len(agent.history_green) < past_years:
+                    new_buy_oil = sum(agent.history_oil) / len(agent.history_oil)
+                    new_buy_green = sum(agent.history_green) / len(agent.history_green)
                 else:
-                    new_buy_oil = (sum(agent.history_oil[-(past_years-i):]) + sum(new_buy_oils)) / past_years
-                    new_buy_green = (sum(agent.history_green[-(past_years-i):]) + sum(new_buy_greens)) / past_years
+                    # 過去の履歴と前回までの予測値を考慮して予測
+                    if i == 0:
+                        # 最初の年は履歴のみから予測
+                        new_buy_oil = sum(agent.history_oil[-past_years:]) / past_years
+                        new_buy_green = sum(agent.history_green[-past_years:]) / past_years
+                    else:
+                        # 過去の履歴から最新のデータをi個除き、代わりに前回の予測i個を使用
+                        past_data_oil = agent.history_oil[-(past_years-i):] if (past_years-i) > 0 else []
+                        past_data_green = agent.history_green[-(past_years-i):] if (past_years-i) > 0 else []
+                        
+                        # 前回の予測データ
+                        forecast_data_oil = new_buy_oils[:i].tolist()
+                        forecast_data_green = new_buy_greens[:i].tolist()
+                        
+                        # 履歴と予測を組み合わせて平均
+                        combined_data_oil = past_data_oil + forecast_data_oil
+                        combined_data_green = past_data_green + forecast_data_green
+                        
+                        if len(combined_data_oil) > 0:
+                            new_buy_oil = sum(combined_data_oil) / len(combined_data_oil)
+                            new_buy_green = sum(combined_data_green) / len(combined_data_green)
+                        else:
+                            new_buy_oil = 0
+                            new_buy_green = 0
                 new_buy_oils[i] = new_buy_oil
                 new_buy_greens[i] = new_buy_green
             
@@ -181,9 +208,8 @@ class Env:
         self.p_oil *= 1 + random.uniform(-0.10, 0.10)
         self.pv_oil *= 1 + random.uniform(-0.10, 0.10)
 
-        self.p_green = self.p_green * (1 + random.uniform(-0.10, 0))
-
-        self.pv_green = max(min(130 ,130*102.5*4/(self.total_n_green+1)),50) *(1+random.uniform(-0.05, 0.05)) # 102.5*4 = totl_nの初期値期待値
+        self.p_green = max(self.p_green, self.p_oil/2) *(1+random.uniform(-0.10, 0))
+        self.pv_green = max(min(180 ,180*200*4/(self.total_n_green+1)),70) *(1+random.uniform(-0.05, 0.05)) # 200 = 25年くらいで下がるように
 
     def feebate(self):
         feebate_rate = self.feebate_rate
@@ -194,8 +220,8 @@ class Env:
         penalty_rate = (self.p_green - self.p_oil * feebate_rate) * sum_n_green / sum_n_oil if sum_n_oil != 0 else 0
         rebate_rate = self.p_green - self.p_oil * feebate_rate if sum_n_oil != 0 else 0
 
-        if penalty_rate < 0 or rebate_rate < 0:
-            pass
+        penalty_rate = max(0, penalty_rate)
+        rebate_rate = max(0, rebate_rate)
 
         for agent in self.agents:
             penalty = agent.n_oil * penalty_rate
@@ -221,18 +247,18 @@ class Simulation:
 
     def __init__(self, Agent, Env):
         # 初期値
-        random.seed(100)
+        random.seed(1001)
         self.time = 50  # シミュレーション期間
         self.initial_p_green = 83.55  # 最初のgreen燃料価格
         self.initial_p_oil = 13.64  # 最初のoil燃料価格
         self.initial_pv_green = 180  # 最初のgreen船の価格
         self.initial_pv_oil = 70  # 最初のoil船の価格
         self.initial_fare = 144.8  # 最初の運賃
-        self.initial_feebate_rate = 0.5  # フィーベイト率
+        self.initial_feebate_rate = 0.1  # フィーベイト率
 
-        self.FEEBATE_CHANGE_RATE = 0.1  # フィーベイト率の変化率
+        self.FEEBATE_CHANGE_RATE = -0.1  # フィーベイト率の変化率
 
-        # N人のエージェントを作成
+        # N個のエージェントを作成
         self.agents = [Agent(i) for i in range(self.N)]
 
         # 環境の作成
@@ -330,7 +356,7 @@ class Simulation:
         plt.xlabel('Year')
         plt.ylabel('Number of Ships')
         plt.legend(['Actual Green Ships', 'Actual Oil Ships'])
-        plt.ylim(0, 7000)
+        # plt.ylim(0, 10000)
 
         # 2. greenとoil燃料の価格の変化
         plt.subplot(3, 2, 2)
@@ -340,7 +366,7 @@ class Simulation:
         plt.xlabel('Year')
         plt.ylabel('Price')
         plt.legend()
-        plt.ylim(0, 100)
+        # plt.ylim(0, 100)
 
         # 3. greenとoil船の価格の変化
         plt.subplot(3, 2, 3)
@@ -350,7 +376,7 @@ class Simulation:
         plt.xlabel('Year')
         plt.ylabel('Price')
         plt.legend()
-        plt.ylim(0, 160)
+        # plt.ylim(0, 190)
 
         # 4. 運賃と需要の変化 - 左右の軸を使用
         ax1 = plt.subplot(3, 2, 4)
@@ -359,7 +385,7 @@ class Simulation:
         ax1.set_ylabel('Fare', color=color)
         ax1.plot(self.years, self.fare_history, color=color, label='Fare')
         ax1.tick_params(axis='y', labelcolor=color)
-        ax1.set_ylim(0, 120)
+        # ax1.set_ylim(0, 120)
 
         ax2 = ax1.twinx()  # 右側のy軸を作成
         color = 'red'
@@ -393,7 +419,7 @@ class Simulation:
         plt.ylabel('Average Number of Ships')
         plt.title('Average Number of Ships Over Time')
         plt.legend()
-        plt.ylim(0, 1200)
+        # plt.ylim(0, 1200)
 
         # レイアウトの調整
         plt.tight_layout()
@@ -417,9 +443,13 @@ class Simulation:
         print("2050年までのどこかのタイミングでoil船の数が0になること:")
         if 0 in total_n_oil_to_2050:
             print(f'True ({total_n_oil_to_2050.index(0)}年後)')
+        else:
+            print("False")
         print("2050年までのどこかのタイミングでoil船の数が初期値の7割以下になること:")
         if any(n_oil < 0.7 * total_n_oil_to_2050[0] for n_oil in total_n_oil_to_2050):
             print(f'True ({total_n_oil_to_2050.index(min(total_n_oil_to_2050))}年後に最小値{min(total_n_oil_to_2050)}を記録)')
+        else:
+            print("False")
 
 if __name__ == '__main__':
     sim = Simulation(Agent, Env)
