@@ -1,3 +1,5 @@
+#このコードは、base.py→linear_pred.py→decreasing_feebaterate.py→本コードの順に行うことを想定しています。
+
 import base
 import linear_pred
 from base import Agent, Env, Simulation, DISCOUNT_RATE
@@ -213,3 +215,46 @@ if __name__ == '__main__':
     sim = CustomSimulation()
     sim.run()
     sim.plot()
+
+
+
+#以下のコードは稗方教授の意見を元に作成したものです。研究開発費を既存技術と新技術に分けて計上しました。
+class CustomAgent(CustomAgent):
+    def __init__(self, i):
+        super().__init__(i)
+        self.n_green = 0
+        self.investment_cutoff = 2050  # 2040年まで研究投資
+        self.investment_type = random.choice(['Type1', 'Type2', 'Type3'])
+        self.investment_rate = 0.10  # すべてのタイプで一定の投資率
+        
+        # 投資配分率
+        self.investment_category_rate = {
+            'Type1': {'Newtech': 0.9, 'Oldtech': 0.1},
+            'Type2': {'Newtech': 0.5, 'Oldtech': 0.5},
+            'Type3': {'Newtech': 0.1, 'Oldtech': 0.9},
+        }[self.investment_type]
+        
+        self.green_available_year = {'Type1': 2026, 'Type2': 2027, 'Type3': 2030}[self.investment_type]
+
+    def trade(self, env, other_agents, year):
+        # 研究開発への投資
+        if year < self.investment_cutoff:
+            new_investment = self.benefit * self.investment_rate
+            env.research_fund_Newtech += new_investment * self.investment_category_rate['Newtech']
+            env.research_fund_Oldtech += new_investment * self.investment_category_rate['Oldtech']
+        
+        # 通常のtrade処理
+        super().trade(env, other_agents, year)
+
+
+class CustomEnv(CustomEnv):
+    def __init__(self, agents, initial_p_green, initial_p_oil, initial_pv_green, initial_pv_oil, initial_fare, initial_feebate_rate, feebate_change_rate):
+        self.research_fund_Newtech = 0  # 新技術研究資金
+        self.research_fund_Oldtech = 0  # 旧技術研究資金
+        super().__init__(agents, initial_p_green, initial_p_oil, initial_pv_green, initial_pv_oil, initial_fare, initial_feebate_rate, feebate_change_rate)
+
+    def apply_research_effects(self):
+        # 旧技術研究資金によるコスト低減
+        reduction_factor = max(0.7, 1 - (self.research_fund_Oldtech / 1e8))
+        self.pv_green *= reduction_factor
+        self.p_green *= reduction_factor
