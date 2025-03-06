@@ -1,5 +1,3 @@
-import base
-
 class CustomAgent(Agent):
     def __init__(self, i):
        super().__init__(i)
@@ -86,11 +84,29 @@ class CustomSimulation(Simulation):
             self.env.update()
 
             for agent in self.agents:
-                agent.renew(self.env, year)  
+                agent.renew(self.env, year)
+
+            # Add the following lines to update history lists:
+            self.total_n_green_history.append(self.env.total_n_green)
+            self.total_n_oil_history.append(self.env.total_n_oil)
+            self.total_n_history.append(self.env.total_n)
+            self.p_green_history.append(self.env.p_green)
+            self.p_oil_history.append(self.env.p_oil)
+            self.pv_green_history.append(self.env.pv_green)
+            self.pv_oil_history.append(self.env.pv_oil)
+            self.fare_history.append(self.env.fare)
+            self.demand_history.append(self.env.demand)
+            self.agent_avg_oil.append(sum(agent.n_oil for agent in self.agents) / len(self.agents))
+            self.agent_avg_green.append(sum(agent.n_green for agent in self.agents) / len(self.agents))
+
+            # エージェントごとの利益を記録
+            for i, agent in enumerate(self.agents):
+                self.agent_benefit_history[i].append(agent.benefit)
 
         print(f"Year: {year}, Research Fund: {self.env.research_fund:.2f}")
 
     def plot(self):
+       super().plot()
        #投資のtypeを表示
        print("\nAgent Investment Types:")
        for agent in self.agents:
