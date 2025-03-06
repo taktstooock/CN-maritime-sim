@@ -45,6 +45,10 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+misc.xml
+modules.xml
+vcs.xml
+.idea/CN-maritime-sim.iml
 *.cover
 *.py,cover
 .hypothesis/
