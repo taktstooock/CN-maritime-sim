@@ -30,7 +30,7 @@ class CustomAgent(base.Agent):
                 # 過去の重油船とグリーン船の差分の合計を集計
                 past_sum_n_oils[i] += agent.history_oil[-(past_years-i)]
                 past_sum_n_greens[i] += agent.history_green[-(past_years-i)]
-            if i:
+            if not i:
                 continue
                 # 差分を一番過去から足し合わせる
             for j in range(i):
@@ -40,6 +40,11 @@ class CustomAgent(base.Agent):
         # 線形回帰
         a_oil, _ = np.polyfit(years,past_sum_n_oils,1)
         a_green, _ = np.polyfit(years, past_sum_n_greens,1)
+        print("green燃料船の差分の和")
+        print(past_sum_n_greens)
+        print("greenの傾き")
+        print(a_green)
+
 
         pred_n_oil = np.zeros(future_years)
         pred_n_green = np.zeros(future_years)
@@ -54,7 +59,7 @@ class CustomAgent(base.Agent):
             if lack_of_history:
                 if j == 0:
                     pred_n_oil[j] = random.randint(-5,5)*len(agents)
-                    pred_n_green[j] = random.randint(0,5)*len(agents)
+                    pred_n_green[j] = random.randint(-5,5)*len(agents)
                 else:
                     pred_n_oil[j] = pred_n_oil[0]
                     pred_n_green[j] = pred_n_green[0]
