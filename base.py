@@ -28,7 +28,7 @@ class Agent:
         n_green_old = self.n_green
         n_oil_old = self.n_oil
 
-        past_years = random.randint(3, 7)
+        past_years = random.randint(3, 10)
         future_years = random.randint(1, 3)
 
         predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years) # 未来の船の数を予測(他のエージェントの合計)
@@ -282,6 +282,7 @@ class Simulation:
         self.agent_benefit_history = [[] for _ in range(self.N)]
         self.agent_avg_oil = []
         self.agent_avg_green = []
+        self.feebate_rate_history = []
 
     def run(self):
         # シミュレーションの実行
@@ -307,6 +308,7 @@ class Simulation:
             self.demand_history.append(self.env.demand)
             self.agent_avg_oil.append(sum(agent.n_oil for agent in self.agents) / len(self.agents))
             self.agent_avg_green.append(sum(agent.n_green for agent in self.agents) / len(self.agents))
+            self.feebate_rate_history.append(self.env.feebate_rate)
 
             # エージェントごとの利益を記録
             for i, agent in enumerate(self.agents):
@@ -360,14 +362,18 @@ class Simulation:
         plt.legend(['Actual Green Ships', 'Actual Oil Ships'])
         # plt.ylim(0, 10000)
 
-        # 2. greenとoil燃料の価格の変化
+        # 2. greenとoil燃料の価格とfeebate rateの変化
         plt.subplot(3, 2, 2)
         plt.plot(self.years, self.p_green_history, label='Price of Green Fuel', color='green')
         plt.plot(self.years, self.p_oil_history, label='Price of Oil Fuel', color='blue')
-        plt.title('Fuel Prices Over Time')
+        plt.title('Fuel Prices and Feebate Rate Over Time')
         plt.xlabel('Year')
-        plt.ylabel('Price')
-        plt.legend()
+        plt.ylabel('Fuel Price')
+        plt.legend(loc='upper left')
+        ax2 = plt.twinx()
+        ax2.plot(self.years, self.feebate_rate_history, label='Feebate Rate', color='red')
+        ax2.set_ylabel('Feebate Rate')
+        ax2.legend(loc='upper right')
         # plt.ylim(0, 100)
 
         # 3. greenとoil船の価格の変化
