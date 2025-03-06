@@ -10,11 +10,13 @@ DISCOUNT_RATE = 0.05  # 割引率
 class CustomAgent(base.Agent):
     def predict_n_future(self, env, agents, past_years, future_years):
         """
-        過去past_years年間の特徴量を用いて、未来future_years年後の船の数を予測する
+        過去past_years年間の船の数を用いて、未来future_years年後の船の数を予測する
         """
         # 自分以外のAgentが買う重油船の数を予測
         past_sum_n_oils = np.zeros(past_years)
         past_sum_n_greens = np.zeros(past_years)
+        past_sum_all_n_oils = np.zeros(past_years)
+        past_sum_all_n_greens = np.zeros(past_years)
         years = np.zeros(past_years)
         lack_of_history = 0
         for i in range(past_years):
@@ -30,20 +32,18 @@ class CustomAgent(base.Agent):
                 # 過去の重油船とグリーン船の差分の合計を集計
                 past_sum_n_oils[i] += agent.history_oil[-(past_years-i)]
                 past_sum_n_greens[i] += agent.history_green[-(past_years-i)]
-            if not i:
+
+        for j in range(past_years):
+            if not j:
                 continue
                 # 差分を一番過去から足し合わせる
-            for j in range(i):
-                past_sum_n_oils[i] += past_sum_n_oils[j]
-                past_sum_n_greens[i] += past_sum_n_greens[j]
+            for k in range(j):
+                past_sum_all_n_oils[j] += past_sum_n_oils[k]
+                past_sum_all_n_greens[j] += past_sum_n_greens[k]
 
         # 線形回帰
-        a_oil, _ = np.polyfit(years,past_sum_n_oils,1)
-        a_green, _ = np.polyfit(years, past_sum_n_greens,1)
-        print("green燃料船の差分の和")
-        print(past_sum_n_greens)
-        print("greenの傾き")
-        print(a_green)
+        a_oil, _ = np.polyfit(years,past_sum_all_n_oils,1)
+        a_green, _ = np.polyfit(years, past_sum_all_n_greens,1)
 
 
         pred_n_oil = np.zeros(future_years)
@@ -76,7 +76,10 @@ class CustomEnv(base.Env):
     pass
 
 if __name__ == '__main__':
+    INITIAL_FEEBATE_RATE = 0.1
+    FEEBATE_CHANGE_RATE = -0.05
     sim = base.Simulation(CustomAgent, CustomEnv)
+    sim.initial_feebate_rate = INITIAL_FEEBATE_RATE
     sim.run()
     sim.plot()
     sim.validate()
