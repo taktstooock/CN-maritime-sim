@@ -8,7 +8,7 @@ class CustomAgent(base.Agent):
        self.investment_type = random.choice(['Type1', 'Type2', 'Type3'])
        self.investment_rate = {'Type1': 0.10, 'Type2': 0.05, 'Type3': 0.0}[self.investment_type]
 
-    def renew(self, env, year):  # 決算 #year追加
+    def renew(self, env, year):  # 決算 #yearを変数に追加
        super().update()
        # 研究投資の処理　＃追加
        if year <= self.investment_cutoff:
