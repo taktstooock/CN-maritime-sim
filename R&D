@@ -1,1 +1,42 @@
+import base
 
+class CustomAgent(base.Agent):
+    def __init__(self, i):
+       super().update()
+       self.investment_cutoff = 2040  # 追加!! 2040年まで研究投資
+       # 投資タイプの割り当て　＃追加
+       self.investment_type = random.choice(['Type1', 'Type2', 'Type3'])
+       self.investment_rate = {'Type1': 0.10, 'Type2': 0.05, 'Type3': 0.0}[self.investment_type]
+
+    def renew(self, env, year):  # 決算 #year追加
+       super().update()
+       # 研究投資の処理　＃追加
+       if year <= self.investment_cutoff:
+            research_investment = self.benefit * self.investment_rate
+            self.benefit -= research_investment
+            env.research_fund += research_investment
+
+class CustomEnv(base.Env):
+   def __init__(self, agents, initial_p_green, initial_p_oil, initial_pv_green, initial_pv_oil, initial_fare, initial_feebate_rate, feebate_change_rate):
+       super().update()
+       self.research_fund = 0  # 研究基金を追加
+
+   #関数を追加
+   def apply_research_effects(self):
+        reduction_factor = max(0.8, 1 - (self.research_fund / 5e9))
+        self.pv_green *= reduction_factor
+        self.p_green *= reduction_factor
+
+　　def update(self):
+        super().update()
+　　     #追加
+        self.apply_research_effects()  # 研究効果を適用
+        self.fare *= 1.025  # 毎年2.5%増加
+        self.feebate_rate *= 1 - self.feebate_change_rate
+
+class Simulation:
+   def plot(self):
+       super().update()
+       #投資のtypeを表示
+       print("\nAgent Investment Types:")
+       for agent in self.agents:print(f"Agent {agent.ind}: {agent.investment_type}")
