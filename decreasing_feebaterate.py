@@ -16,18 +16,20 @@ class CustomAgent(linear_pred.CustomAgent):
 
 class CustomEnv(base.Env):
     def __init__(self, *args, **kwargs):
-        self.feebate_rate_driver = 1 - args[6]
+        # self.feebate_rate_driver = 1 - args[6]
+        self.feebate_rate_driver = args[6]
         super().__init__(*args, **kwargs)
 
     def update(self):
         super().update()
         self.feebate_rate_driver *= 1 - FEEBATE_CHANGE_RATE
-        self.feebate_rate = 1 - self.feebate_rate_driver
+        # self.feebate_rate = 1 - self.feebate_rate_driver
+        self.feebate_rate = self.feebate_rate_driver
 
 
 if __name__ == '__main__':
-    INITIAL_FEEBATE_RATE = 0.1
-    FEEBATE_CHANGE_RATE = 0.01
+    INITIAL_FEEBATE_RATE = 1
+    FEEBATE_CHANGE_RATE = 0.05
     sim = base.Simulation(CustomAgent, CustomEnv, initial_feebate_rate=INITIAL_FEEBATE_RATE)
     sim.run()
     sim.plot()

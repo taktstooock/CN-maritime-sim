@@ -39,8 +39,8 @@ class Agent:
         best_diff_green = 0
 
         test_case = 500 # 重油船、グリーン船の購入数の変動の幅
-        for diff_oil in range(-test_case,test_case+1, 5):
-            for diff_green in range(-test_case,test_case+1, 5):
+        for diff_oil in range(-test_case,test_case+1, 10):
+            for diff_green in range(-test_case,test_case+1, 10):
                 n_oil = max(0, self.n_oil + diff_oil)
                 n_green = max(0, self.n_green + diff_green)
                 predict_total_n_oils = predict_n_oils + n_oil # 自分の重油船の数を加える
