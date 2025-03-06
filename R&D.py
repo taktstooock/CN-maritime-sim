@@ -90,7 +90,7 @@ class CustomEnv(Env):
 class CustomSimulation(Simulation):
     def __init__(self):
         """元の Simulation クラスを拡張し、CustomAgent を使用"""
-        self.FEEBATE_CHANGE_RATE = -0.05  # フィーベイト率の変更
+        self.FEEBATE_CHANGE_RATE = 0.1  # フィーベイト率の変更
         super().__init__(CustomAgent, lambda agents, p_green, p_oil, pv_green, pv_oil, fare, feebate_rate:
                          CustomEnv(agents, p_green, p_oil, pv_green, pv_oil, fare, feebate_rate, self.FEEBATE_CHANGE_RATE))
 
@@ -132,6 +132,21 @@ class CustomSimulation(Simulation):
        print("\nAgent Investment Types:")
        for agent in self.agents:
         print(f"Agent {agent.ind}: {agent.investment_type}")
+
+    def validate(self):
+        """
+        シミュレーションの結果を検証する
+        1. 2050年までにoil船の数が0になること
+        2. 2050年までにoil線の数が初期値の7割以下になること
+        """
+        index_2050 = self.years.index(2050)
+        total_n_oil_2050 = self.total_n_oil_history[index_2050]
+        print("2050年までにoil船の数が0になること:", total_n_oil_2050 == 0)
+        print("2050年までにoil線の数が初期値の7割以下になること:", total_n_oil_2050 < 0.7 * self.initial_pv_oil)
+if __name__ == '__main__':
+    sim = CustomSimulation()
+    sim.run()
+    sim.plot()
 
 if __name__ == '__main__':
     sim = CustomSimulation()
