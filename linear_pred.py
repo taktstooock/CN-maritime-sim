@@ -58,8 +58,8 @@ class CustomAgent(base.Agent):
 
             if lack_of_history:
                 if j == 0:
-                    pred_n_oil[j] = random.randint(-5,5)*len(agents)
-                    pred_n_green[j] = random.randint(-5,5)*len(agents)
+                    pred_n_oil[j] += random.randint(-5,5)*len(agents)
+                    pred_n_green[j] += random.randint(-5,5)*len(agents)
                 else:
                     pred_n_oil[j] = pred_n_oil[0]
                     pred_n_green[j] = pred_n_green[0]
