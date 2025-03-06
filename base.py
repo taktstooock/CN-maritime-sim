@@ -6,8 +6,8 @@ DISCOUNT_RATE = 0.05  # 割引率
 
 class Agent:
     def __init__(self, i):
-        self.n_green = random.randint(0, 5)  # green船の数
-        self.n_oil = random.randint(80, 120)  # oil船の数
+        self.n_green = random.randint(0, 1)  # green船の数
+        self.n_oil = random.randint(150, 250)  # oil船の数
         self.ind = i  # 識別子
         self.benefit = 0  # 初期利益
         self.last_benefit = 0  # 前年の利益
@@ -31,19 +31,22 @@ class Agent:
         past_years = random.randint(1, 3)
         future_years = random.randint(1, 5)
 
-        predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years) # 未来の船の数を予測
+        predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years) # 未来の船の数を予測(他のエージェントの合計)
         self.history_predict_n_oil.append(predict_n_oils)
         self.history_predict_n_green.append(predict_n_greens)
+        # print(f"Agent {self.ind}: Predicted {predict_n_oils} oil ships and {predict_n_greens} green ships in {future_years} years.")
 
         max_benefit = -1e9 # 負の無限大（最大値を求めるため）
         best_diff_oil = 0
         best_diff_green = 0
 
-        test_case = 50 # 重油船、グリーン船の購入数の変動の幅
-        for diff_oil in range(-test_case,test_case+1):
-            for diff_green in range(-test_case,test_case+1):
+        test_case = 100 # 重油船、グリーン船の購入数の変動の幅
+        for diff_oil in range(-test_case,test_case+1, 2):
+            for diff_green in range(-test_case,test_case+1, 2):
                 n_oil = max(0, self.n_oil + diff_oil)
                 n_green = max(0, self.n_green + diff_green)
+                # predict_n_oils += n_oil
+                # predict_n_greens += n_green
                 predict_penalties, predict_rebates = self.predict_feebate_future(env, predict_n_oils, predict_n_greens, n_oil, n_green, future_years)
 
                 predict_costs = 0
@@ -101,7 +104,7 @@ class Agent:
     
     def predict_n_future(self, env, agents, past_years, future_years):
         """
-        過去past_years年間の特徴量を用いて、未来feature_years年後の船の数を予測する
+        過去past_years年間の特徴量を用いて、未来future_years年後の船の数を予測する
         """
         predict_sum_n_oils = np.zeros(future_years)
         predict_sum_n_greens = np.zeros(future_years)
@@ -136,7 +139,7 @@ class Agent:
     def predict_feebate(self, env, n_oil, n_green, self_n_oil, self_n_green, feebate_rate=None):
         feebate_rate = env.feebate_rate if feebate_rate is None else feebate_rate
         if n_oil == 0:
-            return 0, self_n_green * (env.p_green - env.p_oil * feebate_rate)
+            return 0, 0
         if n_oil != 0:
                penalty = self_n_oil * (env.p_green - env.p_oil * feebate_rate) * n_green / n_oil
                rebate = self_n_green * (env.p_green - env.p_oil * feebate_rate)
@@ -189,7 +192,7 @@ class Env:
         sum_n_green = self.cal_total_n_green()
         
         penalty_rate = (self.p_green - self.p_oil * feebate_rate) * sum_n_green / sum_n_oil if sum_n_oil != 0 else 0
-        rebate_rate = self.p_green - self.p_oil * feebate_rate
+        rebate_rate = self.p_green - self.p_oil * feebate_rate if sum_n_oil != 0 else 0
 
         if penalty_rate < 0 or rebate_rate < 0:
             pass
@@ -227,7 +230,7 @@ class Simulation:
         self.initial_fare = 144.8  # 最初の運賃
         self.initial_feebate_rate = 0.5  # フィーベイト率
 
-        self.FEEBATE_CHANGE_RATE = 0  # フィーベイト率の変化率
+        self.FEEBATE_CHANGE_RATE = 0.1  # フィーベイト率の変化率
 
         # N人のエージェントを作成
         self.agents = [Agent(i) for i in range(self.N)]
@@ -363,7 +366,6 @@ class Simulation:
         ax2.set_ylabel('Demand', color=color)
         ax2.plot(self.years, self.demand_history, color=color, label='Demand')
         ax2.tick_params(axis='y', labelcolor=color)
-        ax2.set_ylim(0, 220000)
 
         # 凡例の作成
         lines1, labels1 = ax1.get_legend_handles_labels()
@@ -382,7 +384,6 @@ class Simulation:
         plt.xlabel('Year')
         plt.ylabel('Benefit')
         plt.legend()
-        plt.ylim(0, 45000)
 
         # 6. 通常と特殊の平均船数の比較
         plt.subplot(3, 2, 6)
