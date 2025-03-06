@@ -6,7 +6,7 @@ DISCOUNT_RATE = 0.05  # 割引率
 
 class Agent:
     def __init__(self, i):
-        self.n_green = random.randint(0, 1)  # green船の数
+        self.n_green = random.randint(0, 5)  # green船の数
         self.n_oil = random.randint(150, 250)  # oil船の数
         self.ind = i  # 識別子
         self.benefit = 0  # 初期利益
@@ -28,7 +28,7 @@ class Agent:
         n_green_old = self.n_green
         n_oil_old = self.n_oil
 
-        past_years = random.randint(3, 10)
+        past_years = random.randint(3, 7)
         future_years = random.randint(1, 3)
 
         predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years) # 未来の船の数を予測(他のエージェントの合計)
@@ -39,8 +39,8 @@ class Agent:
         best_diff_green = 0
 
         test_case = 500 # 重油船、グリーン船の購入数の変動の幅
-        for diff_oil in range(-test_case,test_case+1, 10):
-            for diff_green in range(-test_case,test_case+1, 10):
+        for diff_oil in range(-test_case,test_case+1, 5):
+            for diff_green in range(-test_case,test_case+1, 5):
                 n_oil = max(0, self.n_oil + diff_oil)
                 n_green = max(0, self.n_green + diff_green)
                 predict_total_n_oils = predict_n_oils + n_oil # 自分の重油船の数を加える
@@ -251,7 +251,7 @@ class Simulation:
 
     def __init__(self, Agent, Env, time=50, initial_p_green=83.55, initial_p_oil=13.64, initial_pv_green=180, initial_pv_oil=70, initial_fare=144.8, initial_feebate_rate=0.1):
         # 初期値
-        random.seed(1001)
+        random.seed(42)
         self.time = time  # シミュレーション期間
         self.initial_p_green = initial_p_green # 最初のgreen燃料価格
         self.initial_p_oil = initial_p_oil  # 最初のoil燃料価格
