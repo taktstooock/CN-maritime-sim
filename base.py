@@ -52,7 +52,7 @@ class Agent:
                 predict_benefits = 0
                 for i in range(future_years):
                     predict_costs = (n_oil + diff_oil*i) * (1/20*env.pv_oil + env.p_oil) + (n_green + diff_green*i) * (1/20*env.pv_green + env.p_green)
-                    predict_fare = env.fare * 1.025 ** (i + 1) * env.total_n / (predict_total_n_oils[i] + predict_total_n_greens[i]) # 運賃の予測（需要が年率2.5%増加）
+                    predict_fare = env.fare * 1.025 ** (i + 1) * env.total_n / (predict_total_n_oils[i] + predict_total_n_greens[i]) if predict_total_n_oils[i] + predict_total_n_greens[i] != 0 else 0 # 運賃の予測（需要が年率2.5%増加）
                     predict_sales = (n_oil + diff_oil*i + n_green + diff_green*i) * predict_fare
                     predict_benefits += (predict_sales - predict_costs - predict_penalties[i] + predict_rebates[i]) * (1 - DISCOUNT_RATE) ** (i + 1) # 割引現在価値
                 if predict_benefits > max_benefit:
@@ -249,16 +249,16 @@ class Env:
 class Simulation:
     N = 4  # エージェントの数
 
-    def __init__(self, Agent, Env):
+    def __init__(self, Agent, Env, time=50, initial_p_green=83.55, initial_p_oil=13.64, initial_pv_green=180, initial_pv_oil=70, initial_fare=144.8, initial_feebate_rate=0.1):
         # 初期値
         random.seed(1001)
-        self.time = 50  # シミュレーション期間
-        self.initial_p_green = 83.55  # 最初のgreen燃料価格
-        self.initial_p_oil = 13.64  # 最初のoil燃料価格
-        self.initial_pv_green = 180  # 最初のgreen船の価格
-        self.initial_pv_oil = 70  # 最初のoil船の価格
-        self.initial_fare = 144.8  # 最初の運賃
-        self.initial_feebate_rate = 0.1  # フィーベイト率
+        self.time = time  # シミュレーション期間
+        self.initial_p_green = initial_p_green # 最初のgreen燃料価格
+        self.initial_p_oil = initial_p_oil  # 最初のoil燃料価格
+        self.initial_pv_green = initial_pv_green  # 最初のgreen船の価格
+        self.initial_pv_oil = initial_pv_oil  # 最初のoil船の価格
+        self.initial_fare = initial_fare  # 最初の運賃
+        self.initial_feebate_rate = initial_feebate_rate  # フィーベイト率
 
         # N個のエージェントを作成
         self.agents = [Agent(i) for i in range(self.N)]

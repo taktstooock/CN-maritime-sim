@@ -40,11 +40,6 @@ class CustomAgent(base.Agent):
         # 線形回帰
         a_oil, _ = np.polyfit(years,past_sum_n_oils,1)
         a_green, _ = np.polyfit(years, past_sum_n_greens,1)
-        print("green燃料船の差分の和")
-        print(past_sum_n_greens)
-        print("greenの傾き")
-        print(a_green)
-
 
         pred_n_oil = np.zeros(future_years)
         pred_n_green = np.zeros(future_years)
@@ -72,11 +67,8 @@ class CustomAgent(base.Agent):
 
         return pred_n_oil, pred_n_green
 
-class CustomEnv(base.Env):
-    pass
-
 if __name__ == '__main__':
-    sim = base.Simulation(CustomAgent, CustomEnv)
+    sim = base.Simulation(CustomAgent, base.Env)
     sim.run()
     sim.plot()
     sim.validate()

@@ -14,7 +14,7 @@ class CustomAgent(linear_pred.CustomAgent):
         return penalties, rebates
 
 
-class CustomEnv(linear_pred.CustomEnv):
+class CustomEnv(base.Env):
     def update(self):
         super().update()
         self.feebate_rate *= 1 - FEEBATE_CHANGE_RATE
@@ -23,8 +23,7 @@ class CustomEnv(linear_pred.CustomEnv):
 if __name__ == '__main__':
     INITIAL_FEEBATE_RATE = 0.1
     FEEBATE_CHANGE_RATE = -0.05
-    sim = base.Simulation(CustomAgent, CustomEnv)
-    sim.initial_feebate_rate = INITIAL_FEEBATE_RATE
+    sim = base.Simulation(CustomAgent, CustomEnv, initial_feebate_rate=INITIAL_FEEBATE_RATE)
     sim.run()
     sim.plot()
     sim.validate()
