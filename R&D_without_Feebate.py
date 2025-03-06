@@ -1,6 +1,8 @@
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+import base
+from base import Agent, Env, Simulation
 
 DISCOUNT_RATE = 0.05  # 割引率
 
@@ -375,29 +377,14 @@ class Simulation:
 
         # レイアウトの調整
         plt.tight_layout()
+        
+        # 画像として保存
+        plt.savefig('results/simulation_results.png', dpi=300, bbox_inches='tight')
+        plt.close()
 
         # 結果の表示
         print("Final Total Green Ships:", self.env.total_n_green)
         print("Final Total Oil Ships:", self.env.total_n_oil)
-
-    def validate(self):
-        """
-        シミュレーションの結果を検証する
-        1. 2050年までにoil船の数が0になること
-        2. 2050年までにoil船の数が初期値の7割以下になること
-        """
-        index_2050 = self.years.index(2050)
-        total_n_oil_to_2050 = self.total_n_oil_history[:index_2050]
-        print("2050年までのどこかのタイミングでoil船の数が0になること:")
-        if 0 in total_n_oil_to_2050:
-            print(f'True ({total_n_oil_to_2050.index(0)}年後)')
-        else:
-            print("False")
-        print("2050年までのどこかのタイミングでoil船の数が初期値の7割以下になること:")
-        if any(n_oil < 0.7 * total_n_oil_to_2050[0] for n_oil in total_n_oil_to_2050):
-            print(f'True ({total_n_oil_to_2050.index(min(total_n_oil_to_2050))}年後に最小値{min(total_n_oil_to_2050)}を記録)')
-        else:
-            print("False")
 
 if __name__ == '__main__':
     sim = Simulation(Agent, Env)
