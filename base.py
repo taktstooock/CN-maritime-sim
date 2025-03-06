@@ -182,14 +182,14 @@ class Agent:
         penalties = np.zeros(future_years)
         rebates = np.zeros(future_years)
         for i in range(future_years):
-            penalty, rebate = self.predict_feebate(env, n_oils[i], n_greens[i], self_n_oil, self_n_green, env.feebate_rate * (1 - env.feebate_change_rate) ** (i + 1))
+            penalty, rebate = self.predict_feebate(env, n_oils[i], n_greens[i], self_n_oil, self_n_green)
             penalties[i] = penalty
             rebates[i] = rebate
         return penalties, rebates
 
 
 class Env:
-    def __init__(self, agents, initial_p_green, initial_p_oil, initial_pv_green, initial_pv_oil, initial_fare, initial_feebate_rate, feebate_change_rate):
+    def __init__(self, agents, initial_p_green, initial_p_oil, initial_pv_green, initial_pv_oil, initial_fare, initial_feebate_rate):
         self.agents = agents
         self.p_green = initial_p_green
         self.p_oil = initial_p_oil
@@ -201,7 +201,6 @@ class Env:
         self.total_n = self.total_n_green + self.total_n_oil
         self.demand = self.fare * self.total_n
         self.feebate_rate = initial_feebate_rate
-        self.feebate_change_rate = feebate_change_rate
         self.update()
 
     def cal_total_n_oil(self):
@@ -243,7 +242,6 @@ class Env:
         self.total_n = self.total_n_green + self.total_n_oil
         self.demand *= 1.025  # 毎年2.5%増加
         self.fare = self.demand / self.total_n
-        self.feebate_rate *= 1 - self.feebate_change_rate
         self.market()
         self.feebate()
 
@@ -260,16 +258,14 @@ class Simulation:
         self.initial_pv_green = 180  # 最初のgreen船の価格
         self.initial_pv_oil = 70  # 最初のoil船の価格
         self.initial_fare = 144.8  # 最初の運賃
-        self.initial_feebate_rate = 0.5  # フィーベイト率
-
-        self.FEEBATE_CHANGE_RATE = 0  # フィーベイト率の変化率
+        self.initial_feebate_rate = 0.1  # フィーベイト率
 
         # N個のエージェントを作成
         self.agents = [Agent(i) for i in range(self.N)]
 
         # 環境の作成
         self.env = Env(self.agents, self.initial_p_green, self.initial_p_oil, self.initial_pv_green,
-                       self.initial_pv_oil, self.initial_fare, self.initial_feebate_rate, self.FEEBATE_CHANGE_RATE)
+                       self.initial_pv_oil, self.initial_fare, self.initial_feebate_rate)
 
         # 結果を保存するリスト
         self.years = []
