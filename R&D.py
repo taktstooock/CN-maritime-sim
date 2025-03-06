@@ -72,8 +72,72 @@ class CustomAgent(linear_pred.CustomAgent):
         self.n_green = max(0, self.n_green)
         self.history_oil.append(self.n_oil - n_oil_old)
         self.history_green.append(self.n_green - n_green_old)
+    def predict_n_future(self, env, agents, past_years, future_years):
+        """
+        過去past_years年間の船の数を用いて、未来future_years年後の船の数を予測する
+        """
+        # 自分以外のAgentが買う重油船の数を予測
+        past_sum_n_oils = np.zeros(past_years)
+        past_sum_n_greens = np.zeros(past_years)
+        past_sum_all_n_oils = np.zeros(past_years)
+        past_sum_all_n_greens = np.zeros(past_years)
+        years = np.arange(past_years)
+        lack_of_history = False  # データ不足フラグ
 
-class CustomEnv(Env):
+        for i in range(past_years):
+            for agent in agents:
+                if len(agent.history_oil) == 0 or len(agent.history_oil) == 1:
+                    lack_of_history = True
+                    continue
+                elif agent.ind == self.ind:
+                    continue
+                elif len(agent.history_oil) < past_years - i:
+                    continue
+
+                past_sum_n_oils[i] += agent.history_oil[-(past_years - i)]
+                past_sum_n_greens[i] += agent.history_green[-(past_years - i)]
+
+        for j in range(1, past_years):
+            past_sum_all_n_oils[j] = past_sum_all_n_oils[j - 1] + past_sum_n_oils[j]
+            past_sum_all_n_greens[j] = past_sum_all_n_greens[j - 1] + past_sum_n_greens[j]
+
+        # **データがすべて同じ値の場合、線形回帰をスキップ**
+        if len(np.unique(past_sum_all_n_oils)) == 1 or len(np.unique(past_sum_all_n_greens)) == 1:
+            lack_of_history = True
+
+        if lack_of_history:
+            a_oil, a_green = 0, 0  # 予測できない場合は変化なしとする
+        else:
+            a_oil, _ = np.polyfit(years, past_sum_all_n_oils, 1)
+            a_green, _ = np.polyfit(years, past_sum_all_n_greens, 1)
+
+        pred_n_oil = np.zeros(future_years)
+        pred_n_green = np.zeros(future_years)
+
+        for j in range(future_years):
+            for agent in agents:
+                if agent.ind == self.ind:
+                    continue
+                pred_n_oil[j] += agent.n_oil
+                pred_n_green[j] += agent.n_green
+
+            if lack_of_history:
+                if j == 0:
+                    pred_n_oil[j] += random.randint(-5, 5) * len(agents)
+                    pred_n_green[j] += random.randint(-5, 5) * len(agents)
+                else:
+                    pred_n_oil[j] = pred_n_oil[0]
+                    pred_n_green[j] = pred_n_green[0]
+            else:
+                pred_n_oil[j] += a_oil * (j + 1)
+                pred_n_green[j] += a_green * (j + 1)
+
+        pred_n_oil = np.maximum(pred_n_oil, 0).astype(int)
+        pred_n_green = np.maximum(pred_n_green, 0).astype(int)
+
+        return pred_n_oil, pred_n_green
+
+class CustomEnv(CustomEnv):
     def __init__(self, agents, initial_p_green, initial_p_oil, initial_pv_green, initial_pv_oil, initial_fare, initial_feebate_rate, feebate_change_rate):
         self.research_fund = 0  # 研究資金の初期化
         self.feebate_change_rate = feebate_change_rate  # フィーベイト率の変更
@@ -149,8 +213,3 @@ if __name__ == '__main__':
     sim = CustomSimulation()
     sim.run()
     sim.plot()
-
-# if __name__ == '__main__':
-#     sim = CustomSimulation()
-#     sim.run()
-#     sim.plot()
