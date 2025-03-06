@@ -1,5 +1,6 @@
 import base
-from base import Agent, Env, Simulation
+from base import Agent, Env, Simulation, DISCOUNT_RATE
+import random
 
 class CustomAgent(Agent):
     def __init__(self, i):
