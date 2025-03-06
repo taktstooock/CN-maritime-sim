@@ -1,14 +1,17 @@
 import base
+import random
+import numpy as np
+from base import Agent, Env, Simulation
 
 class CustomAgent(base.Agent):
     def __init__(self, i):
        super().update()
-　　　　self.n_green = 0
+       self.n_green = 0
        self.investment_cutoff = 2040  # 追加!! 2040年まで研究投資
        # 投資タイプの割り当て　＃追加
        self.investment_type = random.choice(['Type1', 'Type2', 'Type3'])
        self.investment_rate = {'Type1': 0.10, 'Type2': 0.05, 'Type3': 0.0}[self.investment_type]
-　　　　self.green_available_year = {'Type1': 2026, 'Type2': 2028, 'Type3': 2030}[self.investment_type]
+       self.green_available_year = {'Type1': 2026, 'Type2': 2028, 'Type3': 2030}[self.investment_type]
 
     def renew(self, env, year):  # 決算 #yearを変数に追加
        super().update()
@@ -60,10 +63,10 @@ class CustomEnv(base.Env):
         self.pv_green *= reduction_factor
         self.p_green *= reduction_factor
 
-　　def update(self):
+   def update(self):
         super().update()
-　　     #追加
-　　　　　self.apply_research_effects()
+        #追加
+        self.apply_research_effects()
         self.apply_research_effects()  # 研究効果を適用
         self.fare *= 1.025  # 毎年2.5%増加
         self.feebate_rate *= 1 - self.feebate_change_rate
@@ -73,16 +76,16 @@ class CustomSimulation(base.Simulation):
         """元の Simulation クラスを拡張し、CustomAgent を使用"""
         super().__init__(CustomAgent, Env)
 
-   def run(self):
+    def run(self):
        super().update()
-       print(f"Year: {year}, Research Fund: {self.env.research_fu
-   def plot(self):
+       print(f"Year: {year}, Research Fund: {self.env.research_fund:.2f}")
+    def plot(self):
        super().update()
        #投資のtypeを表示
        print("\nAgent Investment Types:")
        for agent in self.agents:print(f"Agent {agent.ind}: {agent.investment_type}")
 
-  def validate(self):
+    def validate(self):
         """
         シミュレーションの結果を検証する
         1. 2050年までにoil船の数が0になること
