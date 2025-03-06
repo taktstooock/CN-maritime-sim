@@ -29,11 +29,9 @@ class Agent:
         n_oil_old = self.n_oil
 
         past_years = random.randint(2, 3)
-        future_years = random.randint(1, 4)
+        future_years = random.randint(1, 5)
 
         predict_n_oils, predict_n_greens = self.predict_n_future(env, other_agents, past_years, future_years) # 未来の船の数を予測(他のエージェントの合計)
-        self.history_predict_n_oil.append(predict_n_oils)
-        self.history_predict_n_green.append(predict_n_greens)
         # print(f"Agent {self.ind}: Predicted {predict_n_oils} oil ships and {predict_n_greens} green ships in {future_years} years.")
 
         max_benefit = -1e9 # 負の無限大（最大値を求めるため）
@@ -61,7 +59,12 @@ class Agent:
                     max_benefit = predict_benefits
                     best_diff_oil = diff_oil
                     best_diff_green = diff_green
+                    best_predict_total_n_oils = predict_total_n_oils
+                    best_predict_total_n_greens = predict_total_n_greens
         
+        
+        self.history_predict_n_oil.append(best_predict_total_n_oils)
+        self.history_predict_n_green.append(best_predict_total_n_greens)
         self.n_green += best_diff_green
         self.n_oil += best_diff_oil
 
@@ -256,7 +259,7 @@ class Simulation:
         self.initial_fare = 144.8  # 最初の運賃
         self.initial_feebate_rate = 0.1  # フィーベイト率
 
-        self.FEEBATE_CHANGE_RATE = -0.1  # フィーベイト率の変化率
+        self.FEEBATE_CHANGE_RATE = 0  # フィーベイト率の変化率
 
         # N個のエージェントを作成
         self.agents = [Agent(i) for i in range(self.N)]
