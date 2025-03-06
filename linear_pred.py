@@ -58,8 +58,8 @@ class CustomAgent(base.Agent):
 
             if lack_of_history:
                 if j == 0:
-                    pred_n_oil[j] += random.randint(-5,5)*len(agents)
-                    pred_n_green[j] += random.randint(-5,5)*len(agents)
+                    pred_n_oil[j] += random.randint(-20,20)*len(agents)
+                    pred_n_green[j] += random.randint(-20,20)*len(agents)
                 else:
                     pred_n_oil[j] = pred_n_oil[0]
                     pred_n_green[j] = pred_n_green[0]
@@ -67,8 +67,8 @@ class CustomAgent(base.Agent):
                 pred_n_oil[j] += a_oil*(j+1)
                 pred_n_green[j] += a_green*(j+1)
 
-        pred_n_oil = np.maximum(pred_n_oil,0)
-        pred_n_green = np.maximum(pred_n_green,0)
+        pred_n_oil = np.maximum(pred_n_oil,0).astype(int)
+        pred_n_green = np.maximum(pred_n_green,0).astype(int)
 
         return pred_n_oil, pred_n_green
 
