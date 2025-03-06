@@ -1,8 +1,9 @@
 import base
+import linear_pred
 from base import Agent, Env, Simulation, DISCOUNT_RATE
 import random
 
-class CustomAgent(Agent):
+class CustomAgent(linear_pred.CustomAgent):
     def __init__(self, i):
         super().__init__(i)
         self.n_green = 0
@@ -118,6 +119,7 @@ class CustomSimulation(Simulation):
             self.demand_history.append(self.env.demand)
             self.agent_avg_oil.append(sum(agent.n_oil for agent in self.agents) / len(self.agents))
             self.agent_avg_green.append(sum(agent.n_green for agent in self.agents) / len(self.agents))
+            self.feebate_rate_history.append(self.env.feebate_rate)
 
             # エージェントごとの利益を記録
             for i, agent in enumerate(self.agents):
@@ -148,7 +150,7 @@ if __name__ == '__main__':
     sim.run()
     sim.plot()
 
-if __name__ == '__main__':
-    sim = CustomSimulation()
-    sim.run()
-    sim.plot()
+# if __name__ == '__main__':
+#     sim = CustomSimulation()
+#     sim.run()
+#     sim.plot()
