@@ -31,7 +31,7 @@ class CustomAgent(base.Agent):
             for diff_green in range(-test_case,test_case+1):
                 if not skip_gfs:
                     # GFS の基準をクリアしているかどうか
-                    if not self.clear_gfs(diff_oil):
+                    if diff_oil > self.clear_gfs():
                         continue
                 n_oil = max(0, self.n_oil + diff_oil)
                 n_green = max(0, self.n_green + diff_green)
@@ -53,7 +53,7 @@ class CustomAgent(base.Agent):
         self.n_green += best_diff_green
         self.n_oil += best_diff_oil
         # クリアしているかどうか判断していなかったら1年プラス
-        if self.clear_gfs(best_diff_oil):
+        if best_diff_oil < self.clear_gfs():
             self.failed_years = 0
         else:
             self.failed_years += 1
@@ -71,9 +71,18 @@ class CustomAgent(base.Agent):
             skip_gfs = random.randint(0,1)
         return skip_gfs
 
-    def clear_gfs(self, diff_oil):
-        gfs_value = int(-0.7*self.initial_n_oil*(self.failed_years + 1)/(2050 - 2020))
-        return diff_oil < gfs_value
+    def clear_gfs(self):
+        gfs_calc_value = int(-0.7*self.initial_n_oil*(self.failed_years + 1)/(2050 - 2020))
+        # GFS の減らす基準よりoil船の数が少なかったらoil船を0にする
+        if self.n_oil > 0:
+            if self.n_oil + gfs_calc_value < 0:
+                gfs_value = -self.n_oil
+            else:
+                gfs_value = gfs_calc_value
+        # oil船の数が0だったら0を継続
+        else:
+            gfs_value = 0
+        return gfs_value
 
 class CustomEnv(base.Env):
     pass
